@@ -1,0 +1,39 @@
+name: Build CachyOS ISO (base)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build CachyOS ISO with mkarchiso
+        run: |
+          docker run --privileged --rm -v "$PWD:/src" -w /src archlinux:latest bash -c "
+            printf '[cachyos]\nSigLevel = Optional TrustAll\nServer = https://mirror.cachyos.org/repo/\$arch/\$repo\n' >> /etc/pacman.conf &&
+            pacman -Syu --noconfirm archiso grub &&
+            mkarchiso -v -w /src/work -o /src/out /src/profile
+          "
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: cachyos-base-iso
+          path: out/*.iso
+          retention-days: 3
