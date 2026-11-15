@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# deftinstall: runs archinstall with a DeftOS configuration.
+#   deftinstall --config FILE   use FILE (for example, saved from the installer UI)
+#   deftinstall                 fetch installer/archinstall.json from this repo,
+#                               or use the copy shipped on the ISO if offline
+# Any other arguments are passed to archinstall.
+set -euo pipefail
+
+REPO_RAW="https://raw.githubusercontent.com/NyArySadNight/DeftOS-New-Generation-CachyOS-Base/main"
+LOCAL_CFG="/etc/deftos/archinstall.json"
+
+CONFIG=""
+ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --config) CONFIG="${2:?--config needs a file}"; shift 2 ;;
+        *) ARGS+=("$1"); shift ;;
+    esac
+done
+
+if ! command -v archinstall >/dev/null 2>&1; then
+    echo "[deftinstall] archinstall is missing. Install it with: pacman -S archinstall" >&2
+    exit 1
+fi
+
+CFG=$(mktemp /tmp/deftinstall.XXXXXX.json)
+trap 'rm -f "$CFG"' EXIT
+
+if [[ -n "$CONFIG" ]]; then
+    [[ -f "$CONFIG" ]] || { echo "[deftinstall] No such file: $CONFIG" >&2; exit 1; }
+    cp "$CONFIG" "$CFG"
+    echo "[deftinstall] Using $CONFIG"
+elif curl -fsSL --max-time 20 "$REPO_RAW/installer/archinstall.json" -o "$CFG"; then
+    echo "[deftinstall] Using the configuration from the DeftOS repo."
+elif [[ -f "$LOCAL_CFG" ]]; then
+    echo "[deftinstall] Offline: using the configuration shipped on the ISO."
+    cp "$LOCAL_CFG" "$CFG"
+else
+    echo "[deftinstall] No configuration available." >&2
+    exit 1
+fi
+
+python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$CFG" \
+    || { echo "[deftinstall] The configuration is not valid JSON." >&2; exit 1; }
+
+archinstall --config "$CFG" ${ARGS[@]+"${ARGS[@]}"}
