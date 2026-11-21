@@ -32,7 +32,7 @@ jobs:
             pacman -Sql | sort -u > /src/avail.txt &&
             cp -r /src/profile /src/profile-ci &&
             python3 /src/scripts/filter-packages.py /src/profile/packages.x86_64 /src/profile-ci/packages.x86_64 /src/dropped.txt &&
-            echo "dropped: \$(wc -l < /src/dropped.txt)" &&
+            wc -l /src/dropped.txt &&
             mkarchiso -v -w /src/work -o /src/out /src/profile-ci
           "
 
