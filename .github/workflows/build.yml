@@ -28,12 +28,11 @@ jobs:
           docker run --privileged --rm -v "$PWD:/src" -w /src archlinux:latest bash -c "
             set -e
             printf '\n[cachyos]\nSigLevel = Optional TrustAll\nServer = https://mirror.cachyos.org/repo/\$arch/\$repo\n' >> /etc/pacman.conf
-            pacman -Syu --noconfirm archiso grub &&
+            pacman -Syu --noconfirm archiso grub python &&
             pacman -Sql | sort -u > /src/avail.txt &&
             cp -r /src/profile /src/profile-ci &&
-            grep -xFf /src/avail.txt /src/profile/packages.x86_64 > /src/profile-ci/packages.x86_64 &&
-            grep -vxFf /src/avail.txt /src/profile/packages.x86_64 > /src/dropped.txt || true &&
-            echo dropped: \$(wc -l < /src/dropped.txt) &&
+            python3 /src/scripts/filter-packages.py /src/profile/packages.x86_64 /src/profile-ci/packages.x86_64 /src/dropped.txt &&
+            echo "dropped: $(wc -l < /src/dropped.txt)" &&
             mkarchiso -v -w /src/work -o /src/out /src/profile-ci
           "
 
