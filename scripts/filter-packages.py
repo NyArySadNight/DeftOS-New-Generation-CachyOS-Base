@@ -39,9 +39,11 @@ dropped = {w: "not in repos" for w in wanted if w not in keep}
 # Conflicting pairs: keep the first (alphabetical) of each pair, drop the other.
 for w in sorted(keep):
     for c in conflicts.get(w, []):
-        if c in keep and c != w and c > w:
-            keep.discard(c)
-            dropped[c] = f"conflicts with {w}"
+        if c in keep and c != w:
+            loser, winner = max(w, c), min(w, c)
+            if loser in keep:
+                keep.discard(loser)
+                dropped[loser] = f"conflicts with {winner}"
 
 changed = True
 while changed:
