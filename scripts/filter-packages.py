@@ -35,7 +35,7 @@ dropped = {w: "not in repos" for w in wanted if w not in keep}
 changed = True
 while changed:
     changed = False
-    provided = set(keep)
+    provided = set(avail)  # any package in the enabled repos satisfies a dependency
     for w in keep:
         provided.update(info[w][1])
     for w in list(keep):
