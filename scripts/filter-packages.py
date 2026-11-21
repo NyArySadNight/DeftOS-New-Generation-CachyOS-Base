@@ -12,6 +12,7 @@ wanted = [l.strip() for l in open(src, encoding="utf-8") if l.strip()]
 avail = set(subprocess.run(["pacman", "-Sql"], capture_output=True, text=True, check=True).stdout.split())
 
 info = {}  # name -> (depends list, provides list)
+conflicts = {}  # name -> conflict names
 names = [w for w in wanted if w in avail]
 for i in range(0, len(names), 200):
     chunk = names[i:i + 200]
@@ -24,6 +25,9 @@ for i in range(0, len(names), 200):
         prov = re.search(r"^Provides\s*:\s*(.*)$", block, re.M)
         deps = [] if not dep or dep.group(1).strip() == "None" else dep.group(1).split()
         provs = [] if not prov or prov.group(1).strip() == "None" else prov.group(1).split()
+        cf = re.search(r"^Conflicts With\s*:\s*(.*)$", block, re.M)
+        cons = [] if not cf or cf.group(1).strip() == "None" else [re.split(r"[<>=]", c)[0] for c in cf.group(1).split()]
+        conflicts[n.group(1)] = cons
         info[n.group(1)] = (deps, [re.split(r"[<>=]", p)[0] for p in provs])
 
 def base(d):
@@ -31,6 +35,13 @@ def base(d):
 
 keep = {w for w in names if w in info}
 dropped = {w: "not in repos" for w in wanted if w not in keep}
+
+# Conflicting pairs: keep the first (alphabetical) of each pair, drop the other.
+for w in sorted(keep):
+    for c in conflicts.get(w, []):
+        if c in keep and c != w and c > w:
+            keep.discard(c)
+            dropped[c] = f"conflicts with {w}"
 
 changed = True
 while changed:
